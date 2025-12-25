@@ -13,22 +13,21 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: SSH and deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            # go to repo on EC2
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+          ssh-passphrase:  ${{ secrets.EC2_SSH_PASSPHRASE }}
+
+      - name: SSH and deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             cd ~/portfolio-using-AWS-CICD
             git pull origin main
 
-            # copy updated static site to run directory
             sudo cp -r Portfolio_website/* /var/www/portfolio/
 
-            # restart PM2 app
             cd /var/www/portfolio
             pm2 restart portfolio || pm2 start server.js --name portfolio
             pm2 save
+          EOF
